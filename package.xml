@@ -1,0 +1,19 @@
+<package format="2">
+
+  <name>summer_school_supervisor</name>
+  <version>0.1.0</version>
+  <description>TODO</description>
+  <maintainer email="stibipet@fel.cvut.cz">Petr Štibinger</maintainer>
+  <author>Petr Štibinger</author>
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>roslib</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>uvdar_leader_follower</depend>
+  <depend>mrs_lib</depend>
+
+</package>
