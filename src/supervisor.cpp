@@ -29,7 +29,7 @@
 
 #define MIN_COMMAND_HEIGHT 1.0              // [m]
 #define MAX_COMMAND_HEIGHT 15.0             // [m]
-#define MAX_COMMAND_DISTANCE_THRESHOLD 8.0  // [m]
+#define MAX_COMMAND_DISTANCE_THRESHOLD 18.0  // [m]
 #define MAX_VELOCITY_MAGNITUDE 5.0          // [m/s]
 
 bool initialized         = false;
