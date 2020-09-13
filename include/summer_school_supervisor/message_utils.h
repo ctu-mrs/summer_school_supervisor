@@ -42,7 +42,7 @@ mrs_msgs::ReferenceStamped buildMpcReference(Eigen::Vector3d desired_position, s
  *
  * @return message to be published into the /control_manager/trajectory_reference topic
  */
-mrs_msgs::TrajectoryReference buildMpcTrajectoryReference(std::vector<Eigen::Vector3d> position, std::vector<double> heading, double sampling_time,
+mrs_msgs::TrajectoryReference buildMpcTrajectoryReference(std::vector<Eigen::Vector3d> positions, std::vector<double> headings, double sampling_time,
                                                           std::string frame);
 
 /**

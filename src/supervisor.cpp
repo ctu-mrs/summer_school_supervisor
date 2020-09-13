@@ -18,6 +18,7 @@
 
 #include <mrs_msgs/ReferenceStamped.h>
 #include <mrs_msgs/SpeedTrackerCommand.h>
+#include <mrs_msgs/PositionCommand.h>
 #include <mrs_msgs/String.h>
 #include <mrs_msgs/PoseWithCovarianceArrayStamped.h>
 
@@ -27,10 +28,10 @@
 
 #define MAX_ERRONEOUS_COMMANDS_COUNT 10
 
-#define MIN_COMMAND_HEIGHT 1.0              // [m]
-#define MAX_COMMAND_HEIGHT 15.0             // [m]
+#define MIN_COMMAND_HEIGHT 1.0               // [m]
+#define MAX_COMMAND_HEIGHT 15.0              // [m]
 #define MAX_COMMAND_DISTANCE_THRESHOLD 18.0  // [m]
-#define MAX_VELOCITY_MAGNITUDE 5.0          // [m/s]
+#define MAX_VELOCITY_MAGNITUDE 5.0           // [m/s]
 
 bool initialized         = false;
 bool using_speed_tracker = false;
@@ -52,6 +53,7 @@ int       erroneous_commands_count = 0;
 Eigen::Vector3d leader_raw_pos;
 
 ros::Subscriber odometry_subscriber;
+ros::Subscriber position_cmd_subscriber;
 ros::Subscriber uvdar_subscriber;
 ros::Subscriber left_blinkers_subscriber;
 ros::Subscriber right_blinkers_subscriber;
@@ -65,9 +67,11 @@ ros::Timer score_timer, control_action_timer;
 ros::ServiceClient switch_tracker_client;
 ros::ServiceServer start_score_counting_server;
 ros::Publisher     mpc_reference_publisher;
+ros::Publisher     mpc_trajectory_publisher;
 ros::Publisher     speed_tracker_command_publisher;
 
-Eigen::Vector3d follower_position;
+Eigen::Vector3d follower_pos_odom;
+Eigen::Vector3d follower_pos_cmd;
 
 FollowerController fc;
 std::string        uav_frame;
@@ -151,7 +155,7 @@ void scoreTimer(const ros::TimerEvent /* &event */) {
   }
 
   if (erroneous_commands_count > MAX_ERRONEOUS_COMMANDS_COUNT) {
-    ROS_ERROR("[%s]: Too many erroneous commands recieved! Following terminated!", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s]: Too many erroneous commands received! Following terminated!", ros::this_node::getName().c_str());
     contact_broken = true;
   }
 
@@ -194,40 +198,91 @@ void controlAction(const ros::TimerEvent /* &event */) {
       return;
     }
     //}
+
     erroneous_commands_count = 0;
 
     switchToSpeedTracker();
     last_command_time = speed_command.header.stamp;
   } else {
     switchToMpcTracker();
-    // call student's createReferencePoint
-    auto reference_point_request = fc.createReferencePoint();
 
-    /* reference command sanity checks //{ */
-    if (reference_point_request.position.z() < MIN_COMMAND_HEIGHT) {
-      ROS_WARN("[%s]: Reference point set too low! The command will be discarded", ros::this_node::getName().c_str());
-      erroneous_commands_count++;
-      return;
+    // call student's createReferenceTrajectory
+    auto reference_trajectory_request = fc.createReferenceTrajectory();
+    if (reference_trajectory_request.use_for_control) {
+
+      /* reference trajectory sanity checks //{ */
+
+      if (reference_trajectory_request.positions.size() != reference_trajectory_request.headings.size()) {
+        ROS_WARN("[%s]: Number of trajectory points (%ld) does not match the number of trajectory headings (%ld)! The trajectory will be discarded",
+                 ros::this_node::getName().c_str(), reference_trajectory_request.positions.size(), reference_trajectory_request.headings.size());
+        erroneous_commands_count++;
+        return;
+      }
+
+      for (size_t i = 0; i < reference_trajectory_request.positions.size(); i++) {
+
+        if (reference_trajectory_request.positions[i].z() < MIN_COMMAND_HEIGHT) {
+          ROS_WARN("[%s]: Trajectory reference point (%ld) set too low! The trajectory will be discarded", ros::this_node::getName().c_str(), i);
+          erroneous_commands_count++;
+          return;
+        }
+
+        if (reference_trajectory_request.positions[i].z() > MAX_COMMAND_HEIGHT) {
+          ROS_WARN("[%s]: Trajectory reference point (%ld) set too high! The trajectory will be discarded", ros::this_node::getName().c_str(), i);
+          erroneous_commands_count++;
+          return;
+        }
+
+        if ((reference_trajectory_request.positions[0] - follower_pos_odom).norm() > MAX_COMMAND_DISTANCE_THRESHOLD) {
+          ROS_WARN("[%s]: Trajectory start [%.2f, %.2f, %.2f] set too far from the UAV position [%.2f, %.2f, %.2f]. The trajectory will be discarded",
+                   ros::this_node::getName().c_str(), reference_trajectory_request.positions[0].x(), reference_trajectory_request.positions[0].y(),
+                   reference_trajectory_request.positions[0].z(), follower_pos_odom.x(), follower_pos_odom.y(), follower_pos_odom.z());
+          erroneous_commands_count++;
+          return;
+        }
+      }
+      //} reference trajectory sanity checks
+
+      erroneous_commands_count = 0;
+
+      auto reference_trajectory = buildMpcTrajectoryReference(reference_trajectory_request.positions, reference_trajectory_request.headings,
+                                                              reference_trajectory_request.sampling_time, uav_frame);
+      mpc_trajectory_publisher.publish(reference_trajectory);
+      last_command_time = reference_trajectory.header.stamp;
+
+    } else {
+
+      // call student's createReferencePoint
+      auto reference_point_request = fc.createReferencePoint();
+
+      /* reference command sanity checks //{ */
+      if (reference_point_request.position.z() < MIN_COMMAND_HEIGHT) {
+        ROS_WARN("[%s]: Reference point set too low! The command will be discarded", ros::this_node::getName().c_str());
+        erroneous_commands_count++;
+        return;
+      }
+
+      if (reference_point_request.position.z() > MAX_COMMAND_HEIGHT) {
+        ROS_WARN("[%s]: Reference point set too high! The command will be discarded", ros::this_node::getName().c_str());
+        erroneous_commands_count++;
+        return;
+      }
+
+      if ((reference_point_request.position - follower_pos_odom).norm() > MAX_COMMAND_DISTANCE_THRESHOLD) {
+        ROS_WARN("[%s]: Reference point [%.2f, %.2f, %.2f] set too far from the UAV position [%.2f, %.2f, %.2f]. The command will be discarded",
+                 ros::this_node::getName().c_str(), reference_point_request.position.x(), reference_point_request.position.y(),
+                 reference_point_request.position.z(), follower_pos_odom.x(), follower_pos_odom.y(), follower_pos_odom.z());
+        erroneous_commands_count++;
+        return;
+      }
+      //} reference command sanity check
+
+      erroneous_commands_count = 0;
+
+      auto reference_point = buildMpcReference(reference_point_request.position, reference_point_request.heading, uav_frame);
+      mpc_reference_publisher.publish(reference_point);
+      last_command_time = reference_point.header.stamp;
     }
-
-    if (reference_point_request.position.z() > MAX_COMMAND_HEIGHT) {
-      ROS_WARN("[%s]: Reference point set too high! The command will be discarded", ros::this_node::getName().c_str());
-      erroneous_commands_count++;
-      return;
-    }
-
-    if ((reference_point_request.position - follower_position).norm() > MAX_COMMAND_DISTANCE_THRESHOLD) {
-      ROS_WARN("[%s]: Reference point [%.2f, %.2f, %.2f] set too far from the UAV position [%.2f, %.2f, %.2f]. The command will be discarded",
-               ros::this_node::getName().c_str(), reference_point_request.position.x(), reference_point_request.position.y(),
-               reference_point_request.position.z(), follower_position.x(), follower_position.y(), follower_position.z());
-      erroneous_commands_count++;
-      return;
-    }
-    //} reference command sanity check
-
-    auto reference_point = buildMpcReference(reference_point_request.position, reference_point_request.heading, uav_frame);
-    mpc_reference_publisher.publish(reference_point);
-    last_command_time = reference_point.header.stamp;
   }
 }
 //}
@@ -265,13 +320,24 @@ void odometryCallback(const nav_msgs::Odometry& odometry_msg) {
   if (!initialized) {
     return;
   }
-  follower_position = Eigen::Vector3d(odometry_msg.pose.pose.position.x, odometry_msg.pose.pose.position.y, odometry_msg.pose.pose.position.z);
+  follower_pos_odom = Eigen::Vector3d(odometry_msg.pose.pose.position.x, odometry_msg.pose.pose.position.y, odometry_msg.pose.pose.position.z);
   fc.receiveOdometry(odometry_msg);
 }
 //}
 
-/* callbackStartScoreCounting //{ */
-bool callbackStartScoreCounting([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
+/* positionCmdCallback //{ */
+void positionCmdCallback(const mrs_msgs::PositionCommand& position_cmd) {
+  if (!initialized) {
+    return;
+  }
+  follower_pos_cmd = Eigen::Vector3d(position_cmd.position.x, position_cmd.position.y, position_cmd.position.z);
+
+  fc.receiveTrackerOutput(position_cmd);
+}
+//}
+
+/* startScoreCountingCallback //{ */
+bool startScoreCountingCallback([[maybe_unused]] std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) {
   if (counting_score) {
     res.success = false;
     res.message = "Already counting score!";
@@ -295,15 +361,17 @@ int main(int argc, char** argv) {
   uav_frame = ss.str();
 
   odometry_subscriber       = nh.subscribe("odometry_in", 10, &odometryCallback);
+  position_cmd_subscriber   = nh.subscribe("position_cmd_in", 10, &positionCmdCallback);
   uvdar_subscriber          = nh.subscribe("uvdar_in", 10, &uvdarCallback);
   left_blinkers_subscriber  = nh.subscribe("left_blinkers_in", 10, &leftBlinkersCallback);
   right_blinkers_subscriber = nh.subscribe("right_blinkers_in", 10, &rightBlinkersCallback);
-  score_publisher           = nh.advertise<std_msgs::Int64>("score_out", 1);
 
+  score_publisher                 = nh.advertise<std_msgs::Int64>("score_out", 1);
   mpc_reference_publisher         = nh.advertise<mrs_msgs::ReferenceStamped>("reference_point_out", 1);
+  mpc_trajectory_publisher        = nh.advertise<mrs_msgs::TrajectoryReference>("reference_trajectory_out", 1);
   speed_tracker_command_publisher = nh.advertise<mrs_msgs::SpeedTrackerCommand>("speed_tracker_command_out", 1);
   switch_tracker_client           = nh.serviceClient<mrs_msgs::String>("switch_tracker_srv_out");
-  start_score_counting_server     = nh.advertiseService("start_score_counting_in", &callbackStartScoreCounting);
+  start_score_counting_server     = nh.advertiseService("start_score_counting_in", &startScoreCountingCallback);
 
   leader_raw_odom_publisher   = nh.advertise<nav_msgs::Odometry>("leader_raw_odom_out", 1);
   leader_estim_odom_publisher = nh.advertise<nav_msgs::Odometry>("leader_estim_odom_out", 1);

@@ -23,17 +23,17 @@ mrs_msgs::ReferenceStamped buildMpcReference(Eigen::Vector3d desired_position, s
   return ref;
 }
 
-mrs_msgs::TrajectoryReference buildMpcTrajectoryReference(std::vector<Eigen::Vector3d> position, std::vector<double> heading, double sampling_time,
+mrs_msgs::TrajectoryReference buildMpcTrajectoryReference(std::vector<Eigen::Vector3d> positions, std::vector<double> headings, double sampling_time,
                                                           std::string frame) {
   // sanity checks
-  if (position.size() < 1 || heading.size() < 1) {
+  if (positions.size() < 1 || headings.size() < 1) {
     ROS_ERROR("[%s]: Cannot generate empty trajectory!", ros::this_node::getName().c_str());
   }
-  if (position.size() != heading.size()) {
+  if (positions.size() != headings.size()) {
     ROS_WARN("[%s]: Data length mismatch! Tried to build a trajectory with %ld points, but %ld headings. Discarding extra values.",
-             ros::this_node::getName().c_str(), position.size(), heading.size());
+             ros::this_node::getName().c_str(), positions.size(), headings.size());
   }
-  size_t data_size = std::min(position.size(), heading.size());
+  size_t data_size = std::min(positions.size(), headings.size());
 
   mrs_msgs::TrajectoryReference traj;
   traj.header.stamp    = ros::Time::now();
@@ -45,10 +45,10 @@ mrs_msgs::TrajectoryReference buildMpcTrajectoryReference(std::vector<Eigen::Vec
 
   for (size_t i = 0; i < data_size; i++) {
     mrs_msgs::Reference r;
-    r.position.x = position[i].x();
-    r.position.y = position[i].y();
-    r.position.z = position[i].z();
-    r.heading    = heading[i];
+    r.position.x = positions[i].x();
+    r.position.y = positions[i].y();
+    r.position.z = positions[i].z();
+    r.heading    = headings[i];
     traj.points.push_back(r);
   }
   return traj;
