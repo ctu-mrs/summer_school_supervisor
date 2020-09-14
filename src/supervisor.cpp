@@ -50,17 +50,19 @@ int       left_blinkers            = 0;
 int       right_blinkers           = 0;
 int       erroneous_commands_count = 0;
 
-Eigen::Vector3d leader_raw_pos;
+Eigen::Vector3d leader_raw_pos_uvdar;
+Eigen::Vector3d leader_raw_pos_odom;
 
 ros::Subscriber odometry_subscriber;
 ros::Subscriber position_cmd_subscriber;
 ros::Subscriber uvdar_subscriber;
 ros::Subscriber left_blinkers_subscriber;
 ros::Subscriber right_blinkers_subscriber;
-ros::Publisher  score_publisher;
+ros::Subscriber leader_odometry_subscriber;
 
-ros::Publisher leader_raw_odom_publisher;
-ros::Publisher leader_estim_odom_publisher;
+ros::Publisher score_publisher;
+ros::Publisher leader_raw_pos_publisher;
+ros::Publisher leader_estim_pos_publisher;
 
 ros::Timer score_timer, control_action_timer;
 
@@ -110,24 +112,24 @@ void switchToMpcTracker() {
 }
 //}
 
-/* publishLeaderRawOdom //{ */
-void publishLeaderRawOdom() {
-  nav_msgs::Odometry leader_raw_odom;
-  leader_raw_odom.header.frame_id      = uav_frame;
-  leader_raw_odom.header.stamp         = ros::Time::now();
-  leader_raw_odom.pose.pose.position.x = leader_raw_pos.x();
-  leader_raw_odom.pose.pose.position.y = leader_raw_pos.y();
-  leader_raw_odom.pose.pose.position.z = leader_raw_pos.z();
-  leader_raw_odom_publisher.publish(leader_raw_odom);
+/* publishLeaderRawPos //{ */
+void publishLeaderRawPos() {
+  nav_msgs::Odometry leader_raw_pos;
+  leader_raw_pos.header.frame_id      = uav_frame;
+  leader_raw_pos.header.stamp         = ros::Time::now();
+  leader_raw_pos.pose.pose.position.x = leader_raw_pos_uvdar.x();
+  leader_raw_pos.pose.pose.position.y = leader_raw_pos_uvdar.y();
+  leader_raw_pos.pose.pose.position.z = leader_raw_pos_uvdar.z();
+  leader_raw_pos_publisher.publish(leader_raw_pos);
 }
 //}
 
-/* publishLeaderFilteredOdom //{ */
-void publishLeaderFilteredOdom() {
-  auto leader_estim_odom            = fc.getCurrentEstimate();
-  leader_estim_odom.header.frame_id = uav_frame;
-  leader_estim_odom.header.stamp    = ros::Time::now();
-  leader_estim_odom_publisher.publish(leader_estim_odom);
+/* publishLeaderFilteredPos //{ */
+void publishLeaderFilteredPos() {
+  auto leader_estim_pos            = fc.getCurrentEstimate();
+  leader_estim_pos.header.frame_id = uav_frame;
+  leader_estim_pos.header.stamp    = ros::Time::now();
+  leader_estim_pos_publisher.publish(leader_estim_pos);
 }
 //}
 
@@ -171,8 +173,8 @@ void scoreTimer(const ros::TimerEvent /* &event */) {
 /* controlAction //{ */
 void controlAction(const ros::TimerEvent /* &event */) {
 
-  publishLeaderRawOdom();
-  publishLeaderFilteredOdom();
+  publishLeaderRawPos();
+  publishLeaderFilteredPos();
 
   // call student's createSpeedCommand
   auto speed_command_request = fc.createSpeedCommand();
@@ -182,6 +184,15 @@ void controlAction(const ros::TimerEvent /* &event */) {
   if (speed_command_request.use_for_control) {
 
     /* speed command sanity checks //{ */
+
+    double uav_separation = (leader_raw_pos_odom - follower_pos_odom).norm();
+    if(uav_separation < 3.0){
+      ROS_WARN("[%s]: UAVs are too close together! SpeedTracker cannot be used for control!", ros::this_node::getName().c_str());
+      erroneous_commands_count++;
+      switchToMpcTracker();
+      return;
+    }
+
     if (speed_command_request.height < MIN_COMMAND_HEIGHT) {
       ROS_WARN("[%s]: Reference point set too low! The command will be discarded", ros::this_node::getName().c_str());
       erroneous_commands_count++;
@@ -310,7 +321,7 @@ void uvdarCallback(const mrs_msgs::PoseWithCovarianceArrayStamped& uvdar_msg) {
   geometry_msgs::PoseWithCovarianceStamped msg;
   msg.header     = uvdar_msg.header;
   msg.pose.pose  = uvdar_msg.poses[0].pose;
-  leader_raw_pos = Eigen::Vector3d(uvdar_msg.poses[0].pose.position.x, uvdar_msg.poses[0].pose.position.y, uvdar_msg.poses[0].pose.position.z);
+  leader_raw_pos_uvdar = Eigen::Vector3d(uvdar_msg.poses[0].pose.position.x, uvdar_msg.poses[0].pose.position.y, uvdar_msg.poses[0].pose.position.z);
   fc.receiveUvdar(msg);
 }
 //}
@@ -322,6 +333,15 @@ void odometryCallback(const nav_msgs::Odometry& odometry_msg) {
   }
   follower_pos_odom = Eigen::Vector3d(odometry_msg.pose.pose.position.x, odometry_msg.pose.pose.position.y, odometry_msg.pose.pose.position.z);
   fc.receiveOdometry(odometry_msg);
+}
+//}
+
+/* leaderOdometryCallback //{ */
+void leaderOdometryCallback(const nav_msgs::Odometry& odometry_msg) {
+  if (!initialized) {
+    return;
+  }
+  leader_raw_pos_odom = Eigen::Vector3d(odometry_msg.pose.pose.position.x, odometry_msg.pose.pose.position.y, odometry_msg.pose.pose.position.z);
 }
 //}
 
@@ -360,11 +380,12 @@ int main(int argc, char** argv) {
   ss << std::getenv("UAV_NAME") << "/gps_origin";
   uav_frame = ss.str();
 
-  odometry_subscriber       = nh.subscribe("odometry_in", 10, &odometryCallback);
-  position_cmd_subscriber   = nh.subscribe("position_cmd_in", 10, &positionCmdCallback);
-  uvdar_subscriber          = nh.subscribe("uvdar_in", 10, &uvdarCallback);
-  left_blinkers_subscriber  = nh.subscribe("left_blinkers_in", 10, &leftBlinkersCallback);
-  right_blinkers_subscriber = nh.subscribe("right_blinkers_in", 10, &rightBlinkersCallback);
+  odometry_subscriber        = nh.subscribe("odometry_in", 10, &odometryCallback);
+  position_cmd_subscriber    = nh.subscribe("position_cmd_in", 10, &positionCmdCallback);
+  uvdar_subscriber           = nh.subscribe("uvdar_in", 10, &uvdarCallback);
+  left_blinkers_subscriber   = nh.subscribe("left_blinkers_in", 10, &leftBlinkersCallback);
+  right_blinkers_subscriber  = nh.subscribe("right_blinkers_in", 10, &rightBlinkersCallback);
+  leader_odometry_subscriber = nh.subscribe("leader_odometry_in", 10, &leaderOdometryCallback);
 
   score_publisher                 = nh.advertise<std_msgs::Int64>("score_out", 1);
   mpc_reference_publisher         = nh.advertise<mrs_msgs::ReferenceStamped>("reference_point_out", 1);
@@ -373,8 +394,8 @@ int main(int argc, char** argv) {
   switch_tracker_client           = nh.serviceClient<mrs_msgs::String>("switch_tracker_srv_out");
   start_score_counting_server     = nh.advertiseService("start_score_counting_in", &startScoreCountingCallback);
 
-  leader_raw_odom_publisher   = nh.advertise<nav_msgs::Odometry>("leader_raw_odom_out", 1);
-  leader_estim_odom_publisher = nh.advertise<nav_msgs::Odometry>("leader_estim_odom_out", 1);
+  leader_raw_pos_publisher   = nh.advertise<nav_msgs::Odometry>("leader_raw_pos_out", 1);
+  leader_estim_pos_publisher = nh.advertise<nav_msgs::Odometry>("leader_estim_pos_out", 1);
 
   dynamic_reconfigure::Server<uvdar_leader_follower::FollowerConfig>               dynamic_reconfigure_server;
   dynamic_reconfigure::Server<uvdar_leader_follower::FollowerConfig>::CallbackType dynamic_reconfigure_callback_t;

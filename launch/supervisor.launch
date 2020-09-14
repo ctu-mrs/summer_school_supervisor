@@ -1,4 +1,5 @@
 <launch>
+  <arg name="leader_uav" default="uav1" />
   <arg name="follower_uav" default="uav2" />
   <node name="summer_school_supervisor" pkg="summer_school_supervisor" type="summer_school_supervisor" output="screen">
     <rosparam file="$(find uvdar_leader_follower)/config/follower.yaml" command="load" />
@@ -16,9 +17,10 @@
     <remap from="~reference_trajectory_out" to="/$(arg follower_uav)/control_manager/trajectory_reference" />
     <remap from="~speed_tracker_command_out" to="/$(arg follower_uav)/control_manager/speed_tracker/command" />
     <remap from="~switch_tracker_srv_out" to="/$(arg follower_uav)/control_manager/switch_tracker" />
-    <remap from="~leader_raw_odom_out" to="/$(arg follower_uav)/debug/leader_odom/raw" />
-    <remap from="~leader_estim_odom_out" to="/$(arg follower_uav)/debug/leader_odom/filtered" />
+    <remap from="~leader_raw_pos_out" to="/$(arg follower_uav)/debug/leader_pos/raw" />
+    <remap from="~leader_estim_pos_out" to="/$(arg follower_uav)/debug/leader_pos/filtered" />
 
+    <remap from="~leader_odometry_in" to="/$(arg leader_uav)/odometry/odom_main" />
   </node>
 
 </launch>
