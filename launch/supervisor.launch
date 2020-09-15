@@ -1,7 +1,14 @@
 <launch>
+
   <arg name="leader_uav" default="uav1" />
   <arg name="follower_uav" default="uav2" />
-  <node name="summer_school_supervisor" pkg="summer_school_supervisor" type="summer_school_supervisor" output="screen">
+  <arg name="debug" default="false" />
+
+  <arg     if="$(arg debug)" name="launch_prefix" value="debug_roslaunch" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+
+  <node name="summer_school_supervisor" pkg="summer_school_supervisor" type="summer_school_supervisor" output="screen" launch-prefix="$(arg launch_prefix)">
+
     <rosparam file="$(find uvdar_leader_follower)/config/follower.yaml" command="load" />
 
     <remap from="~left_blinkers_in" to="/$(arg follower_uav)/uvdar/blinkers_seen_left" />
