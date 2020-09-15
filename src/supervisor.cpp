@@ -28,9 +28,9 @@
 
 #define MAX_ERRONEOUS_COMMANDS_COUNT 10
 
-#define MIN_COMMAND_HEIGHT 1.0               // [m]
-#define MAX_COMMAND_HEIGHT 15.0              // [m]
-#define MAX_COMMAND_DISTANCE_THRESHOLD 18.0  // [m]
+#define MIN_COMMAND_HEIGHT 2.0               // [m]
+#define MAX_COMMAND_HEIGHT 4.0              // [m]
+#define MAX_COMMAND_DISTANCE_THRESHOLD 15.0  // [m]
 #define MAX_VELOCITY_MAGNITUDE 5.0           // [m/s]
 
 bool initialized         = false;
