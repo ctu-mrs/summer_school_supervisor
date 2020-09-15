@@ -40,5 +40,5 @@ include_directories(
 )
 
 add_executable(summer_school_supervisor src/supervisor.cpp src/message_utils.cpp)
-add_dependencies(summer_school_supervisor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
+add_dependencies(summer_school_supervisor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(summer_school_supervisor ${catkin_LIBRARIES})
