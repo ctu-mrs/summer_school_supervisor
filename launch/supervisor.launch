@@ -21,7 +21,7 @@
       <remap from="~uvdar_in" to="uvdar/filteredPoses" />
 
       <remap from="~start_score_counting_in" to="~start_score_counting" />
-      <remap from="~score_out" to="summer_school_2020/score" />
+      <remap from="~score_out" to="~score" />
 
       <remap from="~reference_point_out" to="control_manager/reference" />
       <remap from="~reference_trajectory_out" to="control_manager/trajectory_reference" />
@@ -30,7 +30,7 @@
       <remap from="~leader_raw_pos_out" to="debug/leader_pos/raw" />
       <remap from="~leader_estim_pos_out" to="debug/leader_pos/filtered" />
 
-      <remap from="~leader_odometry_in" to="/$(arg leader_uav)/odometry/odom_main" />
+      <remap from="~leader_odometry_in" to="/$(arg leader_uav)/odometry/slow_odom" />
 
     </node>
 
