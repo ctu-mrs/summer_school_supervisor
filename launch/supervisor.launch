@@ -2,32 +2,38 @@
 
   <arg name="leader_uav" default="uav1" />
   <arg name="follower_uav" default="uav2" />
+
   <arg name="debug" default="false" />
 
   <arg     if="$(arg debug)" name="launch_prefix" value="debug_roslaunch" />
   <arg unless="$(arg debug)" name="launch_prefix" value="" />
 
-  <node name="summer_school_supervisor" pkg="summer_school_supervisor" type="summer_school_supervisor" output="screen" launch-prefix="$(arg launch_prefix)">
+  <group ns="$(arg follower_uav)">
 
-    <rosparam file="$(find uvdar_leader_follower)/config/follower.yaml" command="load" />
+    <node name="summer_school_supervisor" pkg="summer_school_supervisor" type="summer_school_supervisor" output="screen" launch-prefix="$(arg launch_prefix)">
 
-    <remap from="~left_blinkers_in" to="/$(arg follower_uav)/uvdar/blinkers_seen_left" />
-    <remap from="~right_blinkers_in" to="/$(arg follower_uav)/uvdar/blinkers_seen_right" />
-    <remap from="~odometry_in" to="/$(arg follower_uav)/odometry/odom_main" />
-    <remap from="~position_cmd_in" to="/$(arg follower_uav)/control_manager/position_cmd" />
-    <remap from="~uvdar_in" to="/$(arg follower_uav)/uvdar/filteredPoses" />
+      <rosparam file="$(find uvdar_leader_follower)/config/follower.yaml" command="load" />
 
-    <remap from="~start_score_counting_in" to="/$(arg follower_uav)/summer_school_2020/start_score_counting" />
-    <remap from="~score_out" to="/$(arg follower_uav)/summer_school_2020/score" />
+      <remap from="~left_blinkers_in" to="uvdar/blinkers_seen_left" />
+      <remap from="~right_blinkers_in" to="uvdar/blinkers_seen_right" />
+      <remap from="~odometry_in" to="odometry/odom_main" />
+      <remap from="~position_cmd_in" to="control_manager/position_cmd" />
+      <remap from="~uvdar_in" to="uvdar/filteredPoses" />
 
-    <remap from="~reference_point_out" to="/$(arg follower_uav)/control_manager/reference" />
-    <remap from="~reference_trajectory_out" to="/$(arg follower_uav)/control_manager/trajectory_reference" />
-    <remap from="~speed_tracker_command_out" to="/$(arg follower_uav)/control_manager/speed_tracker/command" />
-    <remap from="~switch_tracker_srv_out" to="/$(arg follower_uav)/control_manager/switch_tracker" />
-    <remap from="~leader_raw_pos_out" to="/$(arg follower_uav)/debug/leader_pos/raw" />
-    <remap from="~leader_estim_pos_out" to="/$(arg follower_uav)/debug/leader_pos/filtered" />
+      <remap from="~start_score_counting_in" to="~start_score_counting" />
+      <remap from="~score_out" to="summer_school_2020/score" />
 
-    <remap from="~leader_odometry_in" to="/$(arg leader_uav)/odometry/odom_main" />
-  </node>
+      <remap from="~reference_point_out" to="control_manager/reference" />
+      <remap from="~reference_trajectory_out" to="control_manager/trajectory_reference" />
+      <remap from="~speed_tracker_command_out" to="control_manager/speed_tracker/command" />
+      <remap from="~switch_tracker_srv_out" to="control_manager/switch_tracker" />
+      <remap from="~leader_raw_pos_out" to="debug/leader_pos/raw" />
+      <remap from="~leader_estim_pos_out" to="debug/leader_pos/filtered" />
+
+      <remap from="~leader_odometry_in" to="/$(arg leader_uav)/odometry/odom_main" />
+
+    </node>
+
+  </group>
 
 </launch>
