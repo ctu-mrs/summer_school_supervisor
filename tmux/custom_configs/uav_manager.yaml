@@ -1,3 +1,5 @@
 takeoff:
   during_takeoff:
     controller: "Se3Controller"
+  after_takeoff:
+    controller: "Se3Controller"

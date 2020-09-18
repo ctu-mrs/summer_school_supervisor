@@ -19,8 +19,8 @@ constraint_management:
 uvdar:
 
   horizontal:
-    speed: 5.0
-    acceleration: 1.0
+    speed: 7.0
+    acceleration: 3.0
     jerk: 20.0
     snap: 20.0
 
