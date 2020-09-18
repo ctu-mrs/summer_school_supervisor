@@ -42,7 +42,7 @@ input=(
 '
   'Control' 'waitForRos; roslaunch mrs_uav_general core.launch config_constraint_manager:=./custom_configs/constraint_manager.yaml config_uav_manager:=./custom_configs/uav_manager.yaml
 '
-  'AutoStart' 'waitForRos; roslaunch uvdar_leader_follower automatic_start.launch
+  'AutoStart' 'waitForRos; roslaunch summer_school_supervisor automatic_start.launch
 '
   'UvObserver' 'export TARGET_FREQUENCY_LEDS=15; waitForRos; roslaunch uvdar_leader_follower single_frequency_uvdar_rw.launch
 '

@@ -38,7 +38,7 @@ input=(
 '
   'Control' 'waitForRos; roslaunch mrs_uav_general core.launch config_constraint_manager:=./custom_configs/constraint_manager.yaml config_uav_manager:=./custom_configs/uav_manager.yaml
 '
-  'AutoStart' 'waitForRos; roslaunch uvdar_leader_follower automatic_start.launch
+  'AutoStart' 'waitForRos; roslaunch summer_school_leader automatic_start.launch
 '
   'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_leader_trajectory.launch
 '
