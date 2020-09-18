@@ -181,6 +181,12 @@ void controlAction(const ros::TimerEvent /* &event */) {
   auto speed_command         = buildSpeedTrackerCommand(speed_command_request.velocity, speed_command_request.heading, speed_command_request.height, uav_frame);
   speed_tracker_command_publisher.publish(speed_command);
 
+  if (sqrt(pow(follower_pos_odom.x() - leader_raw_pos_odom.x(), 2) + pow(follower_pos_odom.y() - leader_raw_pos_odom.y(), 2)) > 15.0) {
+    ROS_WARN("[%s]: UAVs separation limit exceeded!", ros::this_node::getName().c_str());
+    erroneous_commands_count++;
+    return;
+  }
+
   if (speed_command_request.use_for_control) {
 
     /* speed command sanity checks //{ */
