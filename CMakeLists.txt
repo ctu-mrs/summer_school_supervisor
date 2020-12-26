@@ -1,5 +1,8 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1.2)
 project(summer_school_supervisor)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -9,35 +12,24 @@ find_package(catkin REQUIRED COMPONENTS
   mrs_lib
   uvdar_leader_follower
   dynamic_reconfigure
-)
+  )
 
-###########
-## Eigen ##
-###########
 find_package(Eigen3 REQUIRED)
 set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
 set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 
-###################################
-## catkin specific configuration ##
-###################################
 catkin_package(
-  INCLUDE_DIRS include 
+  INCLUDE_DIRS include
   # DEPENDS
   CATKIN_DEPENDS roscpp roslib std_msgs nav_msgs mrs_lib uvdar_leader_follower
   LIBRARIES uvdar_leader_follower
-)
+  )
 
-set(CMAKE_CXX_FLAGS "-std=c++1z -Wall")
-
-###########
-## Build ##
-###########
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${Eigen_INCLUDE_DIRS}
-)
+  )
 
 add_executable(summer_school_supervisor src/supervisor.cpp src/message_utils.cpp)
 add_dependencies(summer_school_supervisor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
