@@ -15,5 +15,6 @@
   <depend>nav_msgs</depend>
   <depend>uvdar_leader_follower</depend>
   <depend>mrs_lib</depend>
+  <depend>uvdar_core</depend>
 
 </package>

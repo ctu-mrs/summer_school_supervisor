@@ -48,8 +48,6 @@ input=(
 '
   'KalmanFilter' 'waitForRos; roslaunch uvdar_core uvdar_kalman_identified.launch output_frame:='"$UAV_NAME"'/gps_origin
 '  
-  'LoadTrajectory' 'waitForControl; roslaunch uvdar_leader_follower load_follower_trajectory.launch
-'
   'Supervisor' 'waitForRos; roslaunch summer_school_supervisor supervisor.launch leader_uav:='"$LEADER_NAME"' follower_uav:='"$UAV_NAME"''
   'StartChallenge' 'rosservice call /'"$UAV_NAME"'/summer_school_supervisor/start_score_counting; rosservice call /'"$LEADER_NAME"'/control_manager/start_trajectory_tracking'
   'Land' 'history -s rosservice call /'"$UAV_NAME"'/uav_manager/land

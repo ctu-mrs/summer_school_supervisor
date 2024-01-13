@@ -16,8 +16,8 @@
 
       <remap from="~left_blinkers_in" to="uvdar/blinkers_seen_left" />
       <remap from="~right_blinkers_in" to="uvdar/blinkers_seen_right" />
-      <remap from="~odometry_in" to="odometry/odom_main" />
-      <remap from="~position_cmd_in" to="control_manager/position_cmd" />
+      <remap from="~odometry_in" to="estimation_manager/odom_main" />
+      <remap from="~position_cmd_in" to="control_manager/tracker_cmd" />
       <remap from="~uvdar_in" to="uvdar/filteredPoses" />
 
       <remap from="~start_score_counting_in" to="~start_score_counting" />

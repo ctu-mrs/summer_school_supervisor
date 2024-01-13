@@ -8,7 +8,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Int64.h>
 #include <std_srvs/Trigger.h>
-#include <mrs_msgs/ImagePointsWithFloatStamped.h>
+#include <uvdar_core/ImagePointsWithFloatStamped.h>
 #include <dynamic_reconfigure/server.h>
 
 #include <eigen3/Eigen/Core>
@@ -18,7 +18,7 @@
 
 #include <mrs_msgs/ReferenceStamped.h>
 #include <mrs_msgs/SpeedTrackerCommand.h>
-#include <mrs_msgs/PositionCommand.h>
+#include <mrs_msgs/TrackerCommand.h>
 #include <mrs_msgs/String.h>
 #include <mrs_msgs/PoseWithCovarianceArrayStamped.h>
 
@@ -29,7 +29,7 @@
 #define MAX_ERRONEOUS_COMMANDS_COUNT 10
 
 #define MIN_COMMAND_HEIGHT 2.0               // [m]
-#define MAX_COMMAND_HEIGHT 4.0              // [m]
+#define MAX_COMMAND_HEIGHT 4.0               // [m]
 #define MAX_COMMAND_DISTANCE_THRESHOLD 15.0  // [m]
 #define MAX_VELOCITY_MAGNITUDE 5.0           // [m/s]
 
@@ -192,7 +192,7 @@ void controlAction(const ros::TimerEvent /* &event */) {
     /* speed command sanity checks //{ */
 
     double uav_separation = (leader_raw_pos_odom - follower_pos_odom).norm();
-    if(uav_separation < 3.0){
+    if (uav_separation < 3.0) {
       ROS_WARN("[%s]: UAVs are too close together! SpeedTracker cannot be used for control!", ros::this_node::getName().c_str());
       erroneous_commands_count++;
       switchToMpcTracker();
@@ -305,13 +305,13 @@ void controlAction(const ros::TimerEvent /* &event */) {
 //}
 
 /* leftBlinkersCallback //{ */
-void leftBlinkersCallback(const mrs_msgs::ImagePointsWithFloatStamped& msg) {
+void leftBlinkersCallback(const uvdar_core::ImagePointsWithFloatStamped& msg) {
   left_blinkers = msg.points.size();
 }
 //}
 
 /* rightBlinkersCallback //{ */
-void rightBlinkersCallback(const mrs_msgs::ImagePointsWithFloatStamped& msg) {
+void rightBlinkersCallback(const uvdar_core::ImagePointsWithFloatStamped& msg) {
   right_blinkers = msg.points.size();
 }
 //}
@@ -325,8 +325,8 @@ void uvdarCallback(const mrs_msgs::PoseWithCovarianceArrayStamped& uvdar_msg) {
     return;
   }
   geometry_msgs::PoseWithCovarianceStamped msg;
-  msg.header     = uvdar_msg.header;
-  msg.pose.pose  = uvdar_msg.poses[0].pose;
+  msg.header           = uvdar_msg.header;
+  msg.pose.pose        = uvdar_msg.poses[0].pose;
   leader_raw_pos_uvdar = Eigen::Vector3d(uvdar_msg.poses[0].pose.position.x, uvdar_msg.poses[0].pose.position.y, uvdar_msg.poses[0].pose.position.z);
   fc.receiveUvdar(msg);
 }
@@ -352,7 +352,7 @@ void leaderOdometryCallback(const nav_msgs::Odometry& odometry_msg) {
 //}
 
 /* positionCmdCallback //{ */
-void positionCmdCallback(const mrs_msgs::PositionCommand& position_cmd) {
+void positionCmdCallback(const mrs_msgs::TrackerCommand& position_cmd) {
   if (!initialized) {
     return;
   }
@@ -383,7 +383,7 @@ int main(int argc, char** argv) {
 
   std::string       reference_frame;
   std::stringstream ss;
-  ss << std::getenv("UAV_NAME") << "/gps_origin";
+  ss << std::getenv("UAV_NAME") << "/world_origin";
   uav_frame = ss.str();
 
   odometry_subscriber        = nh.subscribe("odometry_in", 10, &odometryCallback);

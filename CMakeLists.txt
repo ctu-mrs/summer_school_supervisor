@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   mrs_lib
   uvdar_leader_follower
   dynamic_reconfigure
+  uvdar_core
   )
 
 find_package(Eigen3 REQUIRED)
@@ -21,7 +22,7 @@ set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 catkin_package(
   INCLUDE_DIRS include
   # DEPENDS
-  CATKIN_DEPENDS roscpp roslib std_msgs nav_msgs mrs_lib uvdar_leader_follower
+  CATKIN_DEPENDS roscpp roslib std_msgs nav_msgs mrs_lib uvdar_leader_follower uvdar_core
   LIBRARIES uvdar_leader_follower
   )
 
