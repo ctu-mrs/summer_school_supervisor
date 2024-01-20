@@ -30,7 +30,7 @@
       <remap from="~leader_raw_pos_out" to="debug/leader_pos/raw" />
       <remap from="~leader_estim_pos_out" to="debug/leader_pos/filtered" />
 
-      <remap from="~leader_odometry_in" to="/$(arg leader_uav)/odometry/slow_odom" />
+      <remap from="~leader_odometry_in" to="/$(arg leader_uav)/estimation_manager/odom_main" />
 
     </node>
 
